@@ -16,18 +16,15 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
-// Import BuildConfig jika diperlukan
 import com.example.finalprojectppb.BuildConfig;
 import com.example.finalprojectppb.databinding.ActivityLoadingBinding;
 
-// Import Gemini
 import com.google.ai.client.generativeai.GenerativeModel;
 import com.google.ai.client.generativeai.java.GenerativeModelFutures;
 import com.google.ai.client.generativeai.type.Content;
 import com.google.ai.client.generativeai.type.GenerateContentResponse;
 import com.google.ai.client.generativeai.type.GenerationConfig;
 
-// Import Guava
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -43,7 +40,7 @@ public class LoadingActivityy extends AppCompatActivity {
 
     private static final String TAG = "LoadingActivity";
     private ActivityLoadingBinding binding;
-    private String imageUriString; // Simpan URI untuk dikirim ke Result
+    private String imageUriString;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,7 +61,6 @@ public class LoadingActivityy extends AppCompatActivity {
         Animation scanAnimation = AnimationUtils.loadAnimation(this, R.anim.scanner_animation);
         binding.ivScannerLine.startAnimation(scanAnimation);
 
-        // Konversi URI ke Bitmap dan panggil Gemini
         try {
             Bitmap imageBitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
             runGemini(imageBitmap);
@@ -74,18 +70,12 @@ public class LoadingActivityy extends AppCompatActivity {
         }
     }
 
-    /**
-     * Menjalankan panggilan API ke Gemini untuk menganalisis gambar dan meminta JSON via prompt (tanpa setResponseMimeType).
-     *
-     * @param imageBitmap Bitmap dari gambar yang akan dianalisis.
-     */
     private void runGemini(Bitmap imageBitmap) {
-        // Config minimal tanpa setResponseMimeType
         GenerationConfig.Builder configBuilder = new GenerationConfig.Builder();
 
 
         GenerativeModel gm = new GenerativeModel(
-                "gemini-2.5-pro",  // Model stabil
+                "gemini-2.5-pro",
                 BuildConfig.GEMINI_API_KEY,
                 configBuilder.build(),
                 Collections.emptyList()
@@ -93,7 +83,6 @@ public class LoadingActivityy extends AppCompatActivity {
 
         GenerativeModelFutures model = GenerativeModelFutures.from(gm);
 
-        // "Hack" prompt: Paksa Gemini mengembalikan HANYA JSON tanpa teks lain
         String promptText = "Analisis gambar ini. Identifikasi objek utama. " +
                 "Kembalikan HANYA string JSON yang valid, tanpa teks tambahan, penjelasan, atau markdown. " +
                 "Format JSON harus persis seperti ini: {\"nama\": \"[Nama objek dalam Bahasa Indonesia]\", \"inggris\": \"[Nama objek dalam Bahasa Inggris]\", \"kategori\": \"[Kategori objek, misal: Buah, Perabotan, Hewan]\", \"fakta\": \"[Satu fakta unik atau deskripsi singkat tentang objek ini]\"}";
@@ -113,12 +102,11 @@ public class LoadingActivityy extends AppCompatActivity {
                     String jsonText = result.getText().trim();
                     Log.d(TAG, "Gemini Response: " + jsonText);
 
-                    // --- TAMBAHKAN INI UNTUK MEMBERSIHKAN MARKDOWN ---
                     if (jsonText.startsWith("```json")) {
-                        jsonText = jsonText.substring(7); // Hapus ```json
+                        jsonText = jsonText.substring(7);
                     }
                     if (jsonText.endsWith("```")) {
-                        jsonText = jsonText.substring(0, jsonText.length() - 3); // Hapus ```
+                        jsonText = jsonText.substring(0, jsonText.length() - 3);
                     }
                     jsonText = jsonText.trim();
 
@@ -133,7 +121,6 @@ public class LoadingActivityy extends AppCompatActivity {
                     String kategori = json.optString("kategori", "Tidak diketahui");
                     String fakta = json.optString("fakta", "Tidak ada fakta");
 
-                    // Kirim data ke ResultActivity
                     startResultActivity(nama, inggris, kategori, fakta);
 
                 } catch (JSONException e) {
@@ -153,11 +140,6 @@ public class LoadingActivityy extends AppCompatActivity {
         }, mainExecutor);
     }
 
-    /**
-     * Menampilkan pesan error dan kembali setelah 3 detik.
-     *
-     * @param message Pesan error yang akan ditampilkan.
-     */
     private void showError(String message) {
         binding.ivScannerLine.clearAnimation();
         binding.ivScannerLine.setVisibility(View.GONE);
@@ -168,9 +150,6 @@ public class LoadingActivityy extends AppCompatActivity {
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(this::finish, 3000);
     }
 
-    /**
-     * Memulai ResultActivity dan mengirim data.
-     */
     private void startResultActivity(String nama, String inggris, String kategori, String fakta) {
         Intent intent = new Intent(LoadingActivityy.this, ResultActivity.class);
         intent.putExtra("IMAGE_URI", imageUriString);

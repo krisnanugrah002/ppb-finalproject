@@ -26,7 +26,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Membaca API Key (SINTAKS KOTLIN)
         val geminiApiKey = localProperties.getProperty("GEMINI_API_KEY", "")
         if (geminiApiKey.isEmpty()) {
             logger.warn("GEMINI_API_KEY is not set in local.properties. API calls will fail.")

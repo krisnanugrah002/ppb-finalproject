@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -7,7 +8,6 @@
     android:background="@drawable/gradient_dark_purple"
     tools:context=".ResultActivity">
 
-    <!-- Tombol "Ulangi" -->
     <Button
         android:id="@+id/btnBack"
         android:layout_width="wrap_content"
@@ -23,7 +23,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Kontainer Info Objek -->
     <LinearLayout
         android:id="@+id/llObjectInfo"
         android:layout_width="0dp"
@@ -37,7 +36,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/btnBack">
 
-        <!-- Gambar (dibuat bulat) -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="120dp"
             android:layout_height="160dp"
@@ -53,33 +51,48 @@
                 tools:src="@tools:sample/backgrounds/scenic" />
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Teks Nama & B. Inggris -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
-            android:orientation="vertical">
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-            <TextView
-                android:id="@+id/tvObjectName"
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvObjectName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@android:color/white"
+                    android:textSize="24sp"
+                    android:textStyle="bold"
+                    tools:text="Apel" />
+
+                <TextView
+                    android:id="@+id/tvEnglishName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#C0C0C0"
+                    android:textSize="18sp"
+                    tools:text="Apple" />
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/btnSpeak"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@android:color/white"
-                android:textSize="24sp"
-                android:textStyle="bold"
-                tools:text="Apel" />
-
-            <TextView
-                android:id="@+id/tvEnglishName"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="#C0C0C0"
-                android:textSize="18sp"
-                tools:text="Apple" />
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Play sound"
+                android:src="@android:drawable/ic_btn_speak_now"
+                app:tint="@android:color/white" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Dropdown Kategori -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/cvCategoryHeader"
         android:layout_width="0dp"
@@ -126,7 +139,6 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Konten Kategori (Tersembunyi) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/cvCategoryContent"
         android:layout_width="0dp"
@@ -151,7 +163,6 @@
             tools:text="Buah-buahan" />
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Dropdown Fakta Menarik -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/cvFactHeader"
         android:layout_width="0dp"
@@ -198,7 +209,6 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Konten Fakta (Tersembunyi) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/cvFactContent"
         android:layout_width="0dp"
@@ -225,4 +235,3 @@
     </com.google.android.material.card.MaterialCardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
-

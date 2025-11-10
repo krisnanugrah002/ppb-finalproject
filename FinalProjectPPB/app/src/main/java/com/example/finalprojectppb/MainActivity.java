@@ -9,7 +9,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
-// import android.view.View; // Tidak terpakai, bisa dihapus
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultCallback;
@@ -18,9 +17,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
-// --- INI IMPORT BARU YANG DIPERLUKAN ---
 import androidx.camera.core.AspectRatio;
-// ----------------------------------------
 
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageCapture;
@@ -42,63 +39,47 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
 
-    // --- SAYA UBAH BAGIAN INI UNTUK MENAMBAHKAN IZIN TULIS ---
-    // Kita buat daftar izin yang dinamis
     private static String[] getRequiredPermissions() {
         List<String> permissions = new ArrayList<>();
         permissions.add(Manifest.permission.CAMERA);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+
             permissions.add(Manifest.permission.READ_MEDIA_IMAGES);
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // Android 10-12
             permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE);
-            // Izin TULIS tidak diperlukan di Q+ untuk MediaStore
         } else {
-            // Android 9 (Pie) ke bawah
             permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE);
-            permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE); // WAJIB ADA DI SINI
+            permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
         }
 
         return permissions.toArray(new String[0]);
     }
-    // --------------------------------------------------------
 
-    // Binding untuk mengakses XML
     private ActivityMainCameraBinding binding;
 
-    // Objek untuk fungsionalitas kamera
     private ImageCapture imageCapture;
     private ExecutorService cameraExecutor;
 
-    // Launcher untuk membuka galeri
     private ActivityResultLauncher<String> galleryLauncher;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Setup ViewBinding
         binding = ActivityMainCameraBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        // Buat thread pool untuk tugas kamera
         cameraExecutor = Executors.newSingleThreadExecutor();
 
-        // 1. Cek Izin
         if (allPermissionsGranted()) {
-            startCamera(); // Jika izin sudah ada, jalankan kamera
+            startCamera();
         } else {
-            // Minta izin
             requestPermissionsLauncher.launch(getRequiredPermissions());
         }
 
-        // 2. Set listener untuk tombol
         binding.btnAmbilFoto.setOnClickListener(v -> takePhoto());
         binding.btnUpload.setOnClickListener(v -> openGallery());
 
-        // 3. Inisialisasi launcher galeri
         galleryLauncher = registerForActivityResult(
                 new ActivityResultContracts.GetContent(),
                 new ActivityResultCallback<Uri>() {
@@ -113,18 +94,15 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
-    // Launcher untuk meminta izin
     private final ActivityResultLauncher<String[]> requestPermissionsLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), (Map<String, Boolean> result) -> {
 
-                // Cek izin kamera dulu
                 if (Boolean.TRUE.equals(result.get(Manifest.permission.CAMERA))) {
                     startCamera();
                 } else {
                     Toast.makeText(this, "Izin kamera ditolak. Aplikasi tidak dapat mengambil foto.", Toast.LENGTH_SHORT).show();
                 }
 
-                // Cek izin galeri (READ)
                 boolean galleryPermissionGranted = false;
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     galleryPermissionGranted = Boolean.TRUE.equals(result.get(Manifest.permission.READ_MEDIA_IMAGES));
@@ -136,7 +114,6 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(this, "Izin galeri ditolak. Tidak bisa upload.", Toast.LENGTH_SHORT).show();
                 }
 
-                // Cek izin TULIS (hanya untuk Android lama)
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
                     if (!Boolean.TRUE.equals(result.get(Manifest.permission.WRITE_EXTERNAL_STORAGE))) {
                         Toast.makeText(this, "Izin Tulis ditolak. Tidak bisa menyimpan foto.", Toast.LENGTH_SHORT).show();
@@ -145,7 +122,6 @@ public class MainActivity extends AppCompatActivity {
             });
 
 
-    // Fungsi untuk mengecek apakah semua izin sudah diberikan
     private boolean allPermissionsGranted() {
         for (String permission : getRequiredPermissions()) {
             if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
@@ -155,7 +131,6 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-    // Fungsi utama untuk setup dan menjalankan pratinau kamera
     private void startCamera() {
         ListenableFuture<ProcessCameraProvider> cameraProviderFuture = ProcessCameraProvider.getInstance(this);
 
@@ -163,23 +138,16 @@ public class MainActivity extends AppCompatActivity {
             try {
                 ProcessCameraProvider cameraProvider = cameraProviderFuture.get();
 
-                // --- INI PERBAIKANNYA ---
-                // Kita paksa 'Preview' (layar) untuk 9:16 juga
                 Preview preview = new Preview.Builder()
-                        .setTargetAspectRatio(AspectRatio.RATIO_16_9) // TAMBAHKAN INI
+                        .setTargetAspectRatio(AspectRatio.RATIO_16_9)
                         .build();
-                // -------------------------
 
                 preview.setSurfaceProvider(binding.cameraPreview.getSurfaceProvider());
 
                 imageCapture = new ImageCapture.Builder()
                         .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
 
-                        // --- INI ADALAH SOLUSINYA ---
-                        // Memaksa kamera mengambil foto dengan rasio 9:16 (portrait)
-                        // agar sama dengan rasio preview di layar.
-                        .setTargetAspectRatio(AspectRatio.RATIO_16_9) // INI SUDAH BENAR
-                        // ----------------------------
+                        .setTargetAspectRatio(AspectRatio.RATIO_16_9)
 
                         .build();
 
@@ -193,15 +161,12 @@ public class MainActivity extends AppCompatActivity {
         }, ContextCompat.getMainExecutor(this));
     }
 
-    // Fungsi untuk mengambil foto
     private void takePhoto() {
         if (imageCapture == null) {
             Log.w(TAG, "ImageCapture belum siap, tidak bisa ambil foto.");
             return;
         }
 
-        // Set rotasi TEPAT SEBELUM mengambil foto
-        // (Ini dari perbaikan kita sebelumnya dan ini SUDAH BENAR)
         imageCapture.setTargetRotation(binding.cameraPreview.getDisplay().getRotation());
 
         String name = "FinalProjectPPB_" + System.currentTimeMillis() + ".jpg";
@@ -236,9 +201,7 @@ public class MainActivity extends AppCompatActivity {
 
                     @Override
                     public void onError(@NonNull ImageCaptureException exception) {
-                        // INI KEMUNGKINAN BESAR SUMBER MASALAH ANDA
                         Log.e(TAG, "Gagal mengambil foto: " + exception.getMessage(), exception);
-                        // Tampilkan Toast error ke pengguna
                         Toast.makeText(MainActivity.this, "Gagal menyimpan foto: " + exception.getMessage(), Toast.LENGTH_LONG).show();
 
                     }
@@ -246,22 +209,19 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
-    // Fungsi untuk membuka galeri
     private void openGallery() {
         galleryLauncher.launch("image/*");
     }
 
-    // Fungsi untuk pindah ke LoadingActivity
     private void startLoadingActivity(Uri imageUri) {
         Intent intent = new Intent(MainActivity.this, LoadingActivityy.class);
-        intent.putExtra("IMAGE_URI", imageUri.toString()); // Kirim URI sebagai String
+        intent.putExtra("IMAGE_URI", imageUri.toString());
         startActivity(intent);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        cameraExecutor.shutdown(); // Matikan thread pool
+        cameraExecutor.shutdown();
     }
 }
-

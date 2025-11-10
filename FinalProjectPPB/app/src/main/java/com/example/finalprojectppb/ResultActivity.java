@@ -2,18 +2,24 @@ package com.example.finalprojectppb;
 
 import android.net.Uri;
 import android.os.Bundle;
+import android.speech.tts.TextToSpeech;
 import android.view.View;
-import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.finalprojectppb.databinding.ActivityResultBinding;
 
+import java.util.Locale;
+
 public class ResultActivity extends AppCompatActivity {
 
     private ActivityResultBinding binding;
+    private TextToSpeech tts;
+    private String objectName;
+    private String englishName;
+    private String category;
+    private String fact;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -21,55 +27,76 @@ public class ResultActivity extends AppCompatActivity {
         binding = ActivityResultBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        // 1. Ambil data dari Intent
         String imageUriString = getIntent().getStringExtra("IMAGE_URI");
-        String objectName = getIntent().getStringExtra("NAMA_OBJEK");
-        String englishName = getIntent().getStringExtra("INGGRIS_OBJEK");
-        String category = getIntent().getStringExtra("KATEGORI_OBJEK");
-        String fact = getIntent().getStringExtra("FAKTA_OBJEK");
+        objectName = getIntent().getStringExtra("NAMA_OBJEK");
+        englishName = getIntent().getStringExtra("INGGRIS_OBJEK");
+        category = getIntent().getStringExtra("KATEGORI_OBJEK");
+        fact = getIntent().getStringExtra("FAKTA_OBJEK");
 
-        // 2. Tampilkan gambar
         if (imageUriString != null) {
             binding.ivResultImage.setImageURI(Uri.parse(imageUriString));
         }
 
-        // 3. Tampilkan data teks
         binding.tvObjectName.setText(objectName != null ? objectName : "Tidak Dikenal");
         binding.tvEnglishName.setText(englishName != null ? englishName : "Unknown");
         binding.tvCategoryContent.setText(category != null ? category : "Tidak ada data kategori.");
         binding.tvFactContent.setText(fact != null ? fact : "Tidak ada fakta menarik.");
 
-        // 4. Set listener tombol kembali ("Ulangi")
-        binding.btnBack.setOnClickListener(v -> {
-            finish(); // Tutup ResultActivity dan kembali ke MainActivity
+        binding.btnBack.setOnClickListener(v -> finish());
+
+        binding.cvCategoryHeader.setOnClickListener(v ->
+                toggleDropdown(binding.cvCategoryContent, binding.ivCategoryArrow));
+
+        binding.cvFactHeader.setOnClickListener(v ->
+                toggleDropdown(binding.cvFactContent, binding.ivFactArrow));
+
+        tts = new TextToSpeech(this, status -> {
+            if (status == TextToSpeech.SUCCESS) {
+                tts.setLanguage(Locale.forLanguageTag("id-ID"));
+            }
         });
 
-        // 5. Set listener untuk dropdown Kategori
-        binding.cvCategoryHeader.setOnClickListener(v -> {
-            toggleDropdown(binding.cvCategoryContent, binding.ivCategoryArrow);
-        });
+        binding.btnSpeak.setOnClickListener(v -> {
+            String textToSpeak = buildSpeechText();
+            if (tts != null && !textToSpeak.isEmpty()) {
+                tts.setLanguage(new Locale("id", "ID"));
 
-        // 6. Set listener untuk dropdown Fakta Menarik
-        binding.cvFactHeader.setOnClickListener(v -> {
-            toggleDropdown(binding.cvFactContent, binding.ivFactArrow);
+                tts.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, "ResultTTS");
+            }
         });
     }
 
-    /**
-     * Fungsi helper untuk membuka/menutup dropdown
-     * @param contentLayout CardView yang berisi konten (untuk di-toggle)
-     * @param arrowImageView ImageView panah (untuk diputar)
-     */
+    private String buildSpeechText() {
+        StringBuilder sb = new StringBuilder();
+        if (objectName != null && !objectName.isEmpty()) {
+            sb.append(objectName).append(". ");
+        }
+        if (englishName != null && !englishName.isEmpty()) {
+            sb.append("Bahasa Inggrisnya adalah, ").append(englishName).append(". ");
+        }
+        return sb.toString();
+    }
+
+    private boolean isEnglishWord(String text) {
+        return text.matches("[A-Za-z .,!?']+");
+    }
+
     private void toggleDropdown(View contentLayout, ImageView arrowImageView) {
         if (contentLayout.getVisibility() == View.VISIBLE) {
-            // Tutup dropdown
             contentLayout.setVisibility(View.GONE);
-            arrowImageView.setRotation(0); // Panah ke bawah
+            arrowImageView.setRotation(0);
         } else {
-            // Buka dropdown
             contentLayout.setVisibility(View.VISIBLE);
-            arrowImageView.setRotation(180); // Panah ke atas
+            arrowImageView.setRotation(180);
         }
     }
-}
 
+    @Override
+    protected void onDestroy() {
+        if (tts != null) {
+            tts.stop();
+            tts.shutdown();
+        }
+        super.onDestroy();
+    }
+}
