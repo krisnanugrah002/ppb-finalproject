@@ -1,5 +1,6 @@
 package com.example.finalprojectppb;
 
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
@@ -50,19 +51,28 @@ public class ResultActivity extends AppCompatActivity {
         binding.cvFactHeader.setOnClickListener(v ->
                 toggleDropdown(binding.cvFactContent, binding.ivFactArrow));
 
+        // Inisialisasi Text-to-Speech
         tts = new TextToSpeech(this, status -> {
             if (status == TextToSpeech.SUCCESS) {
                 tts.setLanguage(Locale.forLanguageTag("id-ID"));
             }
         });
 
+        // Tombol Speaker
         binding.btnSpeak.setOnClickListener(v -> {
             String textToSpeak = buildSpeechText();
             if (tts != null && !textToSpeak.isEmpty()) {
                 tts.setLanguage(new Locale("id", "ID"));
-
                 tts.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, "ResultTTS");
             }
+        });
+
+        // TOMBOL KANVAS BARU
+        binding.btnDrawing.setOnClickListener(v -> {
+            Intent intent = new Intent(ResultActivity.this, DrawingActivity.class);
+            intent.putExtra("NAMA_OBJEK", objectName);
+            intent.putExtra("INGGRIS_OBJEK", englishName);
+            startActivity(intent);
         });
     }
 
@@ -75,10 +85,6 @@ public class ResultActivity extends AppCompatActivity {
             sb.append("Bahasa Inggrisnya adalah, ").append(englishName).append(". ");
         }
         return sb.toString();
-    }
-
-    private boolean isEnglishWord(String text) {
-        return text.matches("[A-Za-z .,!?']+");
     }
 
     private void toggleDropdown(View contentLayout, ImageView arrowImageView) {

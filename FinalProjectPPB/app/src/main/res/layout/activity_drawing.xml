@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/gradient_dark_purple"
+    tools:context=".DrawingActivity">
+
+    <!-- Header dengan tombol kembali -->
+    <Button
+        android:id="@+id/btnBackDrawing"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:backgroundTint="#E91E63"
+        android:text="Kembali"
+        android:textColor="@android:color/white"
+        app:cornerRadius="20dp"
+        app:icon="@android:drawable/ic_menu_revert"
+        app:iconTint="@android:color/white"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- Judul -->
+    <TextView
+        android:id="@+id/tvDrawingTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:gravity="center"
+        android:text="Latihan Menulis"
+        android:textColor="@android:color/white"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/btnBackDrawing"
+        android:layout_marginTop="8dp" />
+
+    <!-- Instruksi -->
+    <TextView
+        android:id="@+id/tvDrawingInstruction"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="16dp"
+        android:gravity="center"
+        android:text="Tulis mengikuti garis putus-putus"
+        android:textColor="#C0C0C0"
+        android:textSize="14sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvDrawingTitle" />
+
+    <!-- Kanvas untuk menggambar -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cvCanvas"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        app:cardBackgroundColor="#1A1A1A"
+        app:cardCornerRadius="16dp"
+        app:strokeWidth="2dp"
+        app:strokeColor="#3CFFFFFF"
+        app:layout_constraintBottom_toTopOf="@id/svToolbar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvDrawingInstruction">
+
+        <com.example.finalprojectppb.DrawingCanvasView
+            android:id="@+id/drawingCanvas"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Toolbar dengan tombol-tombol -->
+    <ScrollView
+        android:id="@+id/svToolbar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <LinearLayout
+            android:id="@+id/llToolbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <!-- Pilihan Warna -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Pilih Warna:"
+                android:textColor="@android:color/white"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <ImageButton
+                    android:id="@+id/btnColorWhite"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_margin="4dp"
+                    android:background="@android:color/white"
+                    android:contentDescription="Warna Putih"
+                    android:alpha="1.0"
+                    android:scaleType="fitCenter" />
+
+                <ImageButton
+                    android:id="@+id/btnColorRed"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_margin="4dp"
+                    android:background="#FF5252"
+                    android:contentDescription="Warna Merah"
+                    android:alpha="0.5"
+                    android:scaleType="fitCenter" />
+
+                <ImageButton
+                    android:id="@+id/btnColorYellow"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_margin="4dp"
+                    android:background="#FFD740"
+                    android:contentDescription="Warna Kuning"
+                    android:alpha="0.5"
+                    android:scaleType="fitCenter" />
+
+                <ImageButton
+                    android:id="@+id/btnColorGreen"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_margin="4dp"
+                    android:background="#69F0AE"
+                    android:contentDescription="Warna Hijau"
+                    android:alpha="0.5"
+                    android:scaleType="fitCenter" />
+
+                <ImageButton
+                    android:id="@+id/btnColorBlue"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_margin="4dp"
+                    android:background="#448AFF"
+                    android:contentDescription="Warna Biru"
+                    android:alpha="0.5"
+                    android:scaleType="fitCenter" />
+
+            </LinearLayout>
+
+            <!-- Pilihan Ukuran Brush -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Ukuran:"
+                android:textColor="@android:color/white"
+                android:textSize="14sp"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="8dp" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <Button
+                    android:id="@+id/btnBrushSmall"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="4dp"
+                    android:backgroundTint="#8A2BE2"
+                    android:text="Kecil"
+                    android:textColor="@android:color/white"
+                    app:cornerRadius="16dp" />
+
+                <Button
+                    android:id="@+id/btnBrushMedium"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="4dp"
+                    android:backgroundTint="#8A2BE2"
+                    android:text="Sedang"
+                    android:textColor="@android:color/white"
+                    app:cornerRadius="16dp" />
+
+                <Button
+                    android:id="@+id/btnBrushLarge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="4dp"
+                    android:backgroundTint="#8A2BE2"
+                    android:text="Besar"
+                    android:textColor="@android:color/white"
+                    app:cornerRadius="16dp" />
+
+            </LinearLayout>
+
+            <!-- Tombol Undo dan Hapus Semua -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <Button
+                    android:id="@+id/btnUndo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:backgroundTint="#FF9800"
+                    android:text="Urungkan"
+                    android:textColor="@android:color/white"
+                    app:cornerRadius="20dp"
+                    app:icon="@android:drawable/ic_menu_revert"
+                    app:iconTint="@android:color/white" />
+
+                <Button
+                    android:id="@+id/btnClear"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:backgroundTint="#E91E63"
+                    android:text="Hapus Semua"
+                    android:textColor="@android:color/white"
+                    app:cornerRadius="20dp"
+                    app:icon="@android:drawable/ic_menu_delete"
+                    app:iconTint="@android:color/white" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

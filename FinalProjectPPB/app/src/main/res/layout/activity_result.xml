@@ -55,41 +55,72 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:orientation="vertical">
 
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
-                <TextView
-                    android:id="@+id/tvObjectName"
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:textColor="@android:color/white"
-                    android:textSize="24sp"
-                    android:textStyle="bold"
-                    tools:text="Apel" />
+                    android:layout_weight="1"
+                    android:orientation="vertical">
 
-                <TextView
-                    android:id="@+id/tvEnglishName"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="#C0C0C0"
-                    android:textSize="18sp"
-                    tools:text="Apple" />
+                    <TextView
+                        android:id="@+id/tvObjectName"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@android:color/white"
+                        android:textSize="24sp"
+                        android:textStyle="bold"
+                        tools:text="Apel" />
+
+                    <TextView
+                        android:id="@+id/tvEnglishName"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="#C0C0C0"
+                        android:textSize="18sp"
+                        tools:text="Apple" />
+                </LinearLayout>
+
             </LinearLayout>
 
-            <ImageButton
-                android:id="@+id/btnSpeak"
+            <!-- TOMBOL KANVAS DAN SPEAKER BERSEBELAHAN -->
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Play sound"
-                android:src="@android:drawable/ic_btn_speak_now"
-                app:tint="@android:color/white" />
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <!-- Tombol Kanvas (KIRI) -->
+                <ImageButton
+                    android:id="@+id/btnDrawing"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_marginEnd="8dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Belajar Menulis"
+                    android:src="@android:drawable/ic_menu_edit"
+                    app:tint="#FFD740" />
+
+                <!-- Tombol Speaker (KANAN) -->
+                <ImageButton
+                    android:id="@+id/btnSpeak"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_marginStart="8dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Dengarkan Suara"
+                    android:src="@android:drawable/ic_btn_speak_now"
+                    app:tint="@android:color/white" />
+
+            </LinearLayout>
+
         </LinearLayout>
     </LinearLayout>
 
