@@ -16,31 +16,40 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
-import com.example.finalprojectppb.BuildConfig;
 import com.example.finalprojectppb.databinding.ActivityLoadingBinding;
-
 import com.google.ai.client.generativeai.GenerativeModel;
 import com.google.ai.client.generativeai.java.GenerativeModelFutures;
 import com.google.ai.client.generativeai.type.Content;
 import com.google.ai.client.generativeai.type.GenerateContentResponse;
 import com.google.ai.client.generativeai.type.GenerationConfig;
-
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
-import org.json.JSONException;
-import org.json.JSONObject;
+// Import GSON dan Retrofit
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 import java.io.IOException;
 import java.util.Collections;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit; // Penting untuk mengatur waktu tunggu
+import okhttp3.OkHttpClient;          // Penting untuk klien HTTP
 
 public class LoadingActivityy extends AppCompatActivity {
 
     private static final String TAG = "LoadingActivity";
     private ActivityLoadingBinding binding;
     private String imageUriString;
+
+    // URL API SENOPATI (VERCEL)
+    private static final String BASE_URL_SENOPATI = "https://senopati-api.vercel.app/";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,19 +72,24 @@ public class LoadingActivityy extends AppCompatActivity {
 
         try {
             Bitmap imageBitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
-            runGemini(imageBitmap);
+            // MULAI TAHAP 1: Gemini Vision
+            runGeminiVision(imageBitmap);
         } catch (IOException e) {
             Log.e(TAG, "Gagal mengonversi URI ke Bitmap", e);
             showError("Gagal memuat gambar untuk analisis.");
         }
     }
 
-    private void runGemini(Bitmap imageBitmap) {
+    // --- TAHAP 1: Gemini Vision (Ambil Nama Objek) ---
+    private void runGeminiVision(Bitmap imageBitmap) {
+        binding.tvLoadingText.setText("Menganalisis gambar...");
+
         GenerationConfig.Builder configBuilder = new GenerationConfig.Builder();
+        configBuilder.temperature = 0.4f;
 
-
+        // Versi Gemini TETAP 2.5-flash sesuai permintaan
         GenerativeModel gm = new GenerativeModel(
-                "gemini-2.5-pro",
+                "gemini-2.5-flash",
                 BuildConfig.GEMINI_API_KEY,
                 configBuilder.build(),
                 Collections.emptyList()
@@ -83,9 +97,7 @@ public class LoadingActivityy extends AppCompatActivity {
 
         GenerativeModelFutures model = GenerativeModelFutures.from(gm);
 
-        String promptText = "Analisis gambar ini. Identifikasi objek utama. " +
-                "Kembalikan HANYA string JSON yang valid, tanpa teks tambahan, penjelasan, atau markdown. " +
-                "Format JSON harus persis seperti ini: {\"nama\": \"[Nama objek dalam Bahasa Indonesia]\", \"inggris\": \"[Nama objek dalam Bahasa Inggris]\", \"kategori\": \"[Kategori objek, misal: Buah, Perabotan, Hewan]\", \"fakta\": \"[Satu fakta unik atau deskripsi singkat tentang objek ini]\"}";
+        String promptText = "Apa nama satu objek utama yang paling menonjol di gambar ini? Jawab hanya dengan nama bendanya dalam Bahasa Indonesia. Jangan ada kata lain.";
 
         Content content = new Content.Builder()
                 .addImage(imageBitmap)
@@ -98,55 +110,155 @@ public class LoadingActivityy extends AppCompatActivity {
         Futures.addCallback(response, new FutureCallback<GenerateContentResponse>() {
             @Override
             public void onSuccess(@Nullable GenerateContentResponse result) {
-                try {
-                    String jsonText = result.getText().trim();
-                    Log.d(TAG, "Gemini Response: " + jsonText);
+                if (result != null) {
+                    String detectedObjectName = result.getText().trim();
+                    detectedObjectName = detectedObjectName.replace("```", "").trim();
 
-                    if (jsonText.startsWith("```json")) {
-                        jsonText = jsonText.substring(7);
-                    }
-                    if (jsonText.endsWith("```")) {
-                        jsonText = jsonText.substring(0, jsonText.length() - 3);
-                    }
-                    jsonText = jsonText.trim();
+                    Log.d(TAG, "Gemini Output: " + detectedObjectName);
 
-
-                    if (!jsonText.startsWith("{") || !jsonText.endsWith("}")) {
-                        throw new JSONException("Respons bukan JSON valid: " + jsonText);
-                    }
-
-                    JSONObject json = new JSONObject(jsonText);
-                    String nama = json.optString("nama", "Tidak ditemukan");
-                    String inggris = json.optString("inggris", "Not found");
-                    String kategori = json.optString("kategori", "Tidak diketahui");
-                    String fakta = json.optString("fakta", "Tidak ada fakta");
-
-                    startResultActivity(nama, inggris, kategori, fakta);
-
-                } catch (JSONException e) {
-                    Log.e(TAG, "Gagal parsing JSON", e);
-                    showError("Respons AI tidak valid. Coba lagi.");
-                } catch (Exception e) {
-                    Log.e(TAG, "Error tak terduga", e);
-                    showError("Terjadi error: " + e.getMessage());
+                    // Lanjut ke TAHAP 2: Kirim nama objek ke Senopati
+                    fetchDetailsFromSenopati(detectedObjectName);
+                } else {
+                    showError("Gemini tidak mengembalikan hasil.");
                 }
             }
 
             @Override
             public void onFailure(@NonNull Throwable t) {
-                Log.e(TAG, "Panggilan Gemini gagal", t);
-                showError("Gagal menghubungi AI: " + t.getMessage());
+                Log.e(TAG, "Gemini gagal", t);
+                showError("Gagal mengenali gambar: " + t.getMessage());
             }
         }, mainExecutor);
     }
 
+    // --- TAHAP 2: Senopati API Vercel (Ambil Fakta & Info) ---
+    private void fetchDetailsFromSenopati(String objectName) {
+        runOnUiThread(() -> binding.tvLoadingText.setText("Mencari fakta unik..."));
+
+        // 1. GUNAKAN CLIENT UNSAFE (Bypass SSL Error)
+        OkHttpClient client = getUnsafeOkHttpClient();
+
+        // 2. PASANG CLIENT KE RETROFIT
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(BASE_URL_SENOPATI)
+                .client(client) // Menggunakan client yang sudah di-bypass SSL-nya
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+
+        SenopatiApiService service = retrofit.create(SenopatiApiService.class);
+
+        // --- KONSTRUKSI REQUEST UNTUK API SENOPATI ---
+        JsonObject payload = new JsonObject();
+
+        String systemInstruction = "Kamu adalah ensiklopedia anak pintar. " +
+                "Berikan detail objek dalam format JSON VALID tanpa markdown. " +
+                "Format wajib: {\"inggris\": \"[Nama Inggris]\", \"kategori\": \"[Kategori]\", \"fakta\": \"[Fakta singkat]\"}";
+        payload.addProperty("systemPrompt", systemInstruction);
+        payload.addProperty("prompt", "Jelaskan tentang objek: " + objectName);
+        payload.add("messages", new JsonArray());
+
+        Log.d(TAG, "Mengirim ke Senopati: " + payload.toString());
+
+        service.chat(payload).enqueue(new Callback<JsonObject>() {
+            @Override
+            public void onResponse(Call<JsonObject> call, Response<JsonObject> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    try {
+                        String reply = response.body().get("reply").getAsString();
+                        Log.d(TAG, "Senopati Reply: " + reply);
+
+                        if (reply.contains("```json")) {
+                            reply = reply.split("```json")[1].split("```")[0];
+                        } else if (reply.contains("```")) {
+                            reply = reply.split("```")[1].split("```")[0];
+                        }
+
+                        JsonObject jsonResult = JsonParser.parseString(reply.trim()).getAsJsonObject();
+
+                        String inggris = jsonResult.has("inggris") ? jsonResult.get("inggris").getAsString() : "Unknown";
+                        String kategori = jsonResult.has("kategori") ? jsonResult.get("kategori").getAsString() : "Umum";
+                        String fakta = jsonResult.has("fakta") ? jsonResult.get("fakta").getAsString() : "Tidak ada fakta.";
+
+                        startResultActivity(objectName, inggris, kategori, fakta);
+
+                    } catch (Exception e) {
+                        Log.e(TAG, "Gagal parsing JSON Senopati", e);
+                        startResultActivity(objectName, "Nama Inggris", "Error", "Gagal memproses data.");
+                    }
+                } else {
+                    Log.e(TAG, "Senopati Error: " + response.code());
+                    showError("Server Senopati sibuk (Error " + response.code() + ")");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<JsonObject> call, Throwable t) {
+                Log.e(TAG, "Koneksi Senopati Error Detail: ", t);
+
+                String pesanError;
+
+                // Deteksi jenis error dengan pesan yang lebih spesifik
+                if (t instanceof java.net.SocketTimeoutException) {
+                    pesanError = "Waktu habis! Server terlalu lambat menjawab.";
+                } else if (t instanceof java.security.cert.CertPathValidatorException ||
+                        t instanceof javax.net.ssl.SSLHandshakeException) {
+                    pesanError = "Masalah Keamanan SSL (Harusnya sudah fix).";
+                } else if (t instanceof java.net.UnknownHostException) {
+                    pesanError = "DNS Error: Tidak bisa menemukan server.";
+                } else {
+                    pesanError = "Error: " + t.getMessage();
+                }
+
+                showError(pesanError);
+            }
+        });
+    }
+
+    // --- METHOD TAMBAHAN UNTUK BYPASS SSL (CERTIFICATE ERROR) ---
+    private OkHttpClient getUnsafeOkHttpClient() {
+        try {
+            // Buat TrustManager yang mempercayai semua sertifikat
+            final javax.net.ssl.TrustManager[] trustAllCerts = new javax.net.ssl.TrustManager[]{
+                    new javax.net.ssl.X509TrustManager() {
+                        @Override
+                        public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) {
+                        }
+
+                        @Override
+                        public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) {
+                        }
+
+                        @Override
+                        public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                            return new java.security.cert.X509Certificate[]{};
+                        }
+                    }
+            };
+
+            // Install TrustManager
+            final javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("SSL");
+            sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
+
+            // Buat SocketFactory
+            final javax.net.ssl.SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
+
+            OkHttpClient.Builder builder = new OkHttpClient.Builder();
+            builder.sslSocketFactory(sslSocketFactory, (javax.net.ssl.X509TrustManager) trustAllCerts[0]);
+            builder.hostnameVerifier((hostname, session) -> true); // Izinkan semua hostname
+
+            // Tetap pasang Timeout 60 detik agar tidak RTO
+            builder.connectTimeout(60, TimeUnit.SECONDS);
+            builder.readTimeout(60, TimeUnit.SECONDS);
+            builder.writeTimeout(60, TimeUnit.SECONDS);
+
+            return builder.build();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private void showError(String message) {
-        binding.ivScannerLine.clearAnimation();
-        binding.ivScannerLine.setVisibility(View.GONE);
-        binding.tvLoadingText.setText(message);
-
         Toast.makeText(this, message, Toast.LENGTH_LONG).show();
-
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(this::finish, 3000);
     }
 
