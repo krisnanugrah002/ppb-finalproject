@@ -1,46 +1,38 @@
 package com.example.finalprojectppb;
 
 import android.content.Intent;
+import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
-import android.provider.MediaStore;
+import android.provider.OpenableColumns;
 import android.util.Log;
-import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
 
 import com.example.finalprojectppb.databinding.ActivityLoadingBinding;
-import com.google.ai.client.generativeai.GenerativeModel;
-import com.google.ai.client.generativeai.java.GenerativeModelFutures;
-import com.google.ai.client.generativeai.type.Content;
-import com.google.ai.client.generativeai.type.GenerateContentResponse;
-import com.google.ai.client.generativeai.type.GenerationConfig;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-
-// Import GSON dan Retrofit
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.concurrent.TimeUnit;
+
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
+import okhttp3.RequestBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
-
-import java.io.IOException;
-import java.util.Collections;
-import java.util.concurrent.Executor;
-import java.util.concurrent.TimeUnit; // Penting untuk mengatur waktu tunggu
-import okhttp3.OkHttpClient;          // Penting untuk klien HTTP
 
 public class LoadingActivityy extends AppCompatActivity {
 
@@ -48,8 +40,8 @@ public class LoadingActivityy extends AppCompatActivity {
     private ActivityLoadingBinding binding;
     private String imageUriString;
 
-    // URL API SENOPATI (VERCEL)
-    private static final String BASE_URL_SENOPATI = "https://senopati-api.vercel.app/";
+    // URL API SENOPATI BARU
+    private static final String BASE_URL_SENOPATI = "https://senopati-elysia.vercel.app/";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,196 +62,256 @@ public class LoadingActivityy extends AppCompatActivity {
         Animation scanAnimation = AnimationUtils.loadAnimation(this, R.anim.scanner_animation);
         binding.ivScannerLine.startAnimation(scanAnimation);
 
-        try {
-            Bitmap imageBitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
-            // MULAI TAHAP 1: Gemini Vision
-            runGeminiVision(imageBitmap);
-        } catch (IOException e) {
-            Log.e(TAG, "Gagal mengonversi URI ke Bitmap", e);
-            showError("Gagal memuat gambar untuk analisis.");
+        // Langsung jalankan proses Vision ke Server
+        uploadImageToSenopati(imageUri);
+    }
+
+    private void uploadImageToSenopati(Uri imageUri) {
+        binding.tvLoadingText.setText("Processing by Senopati Vision");
+
+        // 1. Siapkan File dari URI dengan KOMPRESI
+        File file = getCompressedFileFromUri(imageUri);
+
+        if (file == null) {
+            showError("Gagal memproses file gambar.");
+            return;
         }
-    }
 
-    // --- TAHAP 1: Gemini Vision (Ambil Nama Objek) ---
-    private void runGeminiVision(Bitmap imageBitmap) {
-        binding.tvLoadingText.setText("Menganalisis gambar...");
+        Log.d(TAG, "File siap upload. Ukuran: " + (file.length() / 1024) + " KB");
 
-        GenerationConfig.Builder configBuilder = new GenerationConfig.Builder();
-        configBuilder.temperature = 0.4f;
+        // 2. Siapkan Request Body (Multipart)
+        // Image (Pastikan tipe MIME adalah image/jpeg karena kita sudah kompres ke JPG)
+        RequestBody requestFile = RequestBody.create(MediaType.parse("image/jpeg"), file);
+        MultipartBody.Part bodyImage = MultipartBody.Part.createFormData("image", "upload.jpg", requestFile);
 
-        // Versi Gemini TETAP 2.5-flash sesuai permintaan
-        GenerativeModel gm = new GenerativeModel(
-                "gemini-2.5-flash",
-                BuildConfig.GEMINI_API_KEY,
-                configBuilder.build(),
-                Collections.emptyList()
-        );
+        // --- UPDATE PENTING: PROMPT BARU DENGAN PERSONA CURATOR + FIX KATEGORI ---
+        // Saya menambahkan field "kategori" ke dalam JSON Schema agar AI mengisinya.
+        String singlePrompt =
+                "You are an expert Curator of Obscure Knowledge. Your task is to identify the object in the image and provide a JSON response containing strictly \"Mind-Blowing\" trivia.\n" +
+                        "\n" +
+                        "JSON Schema:\n" +
+                        "{\n" +
+                        "  \"nama_indonesia\": \"string\",\n" +
+                        "  \"nama_inggris\": \"string\",\n" +
+                        "  \"kategori\": \"string\",\n" + // <--- DITAMBAHKAN AGAR TIDAK HANYA 'UMUM'
+                        "  \"fakta_menarik\": \"string\"\n" +
+                        "}\n" +
+                        "\n" +
+                        "CRITICAL RULES FOR \"fakta_menarik\" (MUST FOLLOW):\n" +
+                        "\n" +
+                        "1.  **THE \"ANTI-BORING\" FILTER (STRICTLY FORBIDDEN):**\n" +
+                        "    * ❌ DO NOT explain the object's function (e.g., \"Combs are for tidying hair\").\n" +
+                        "    * ❌ DO NOT mention generic variations (e.g., \"Combs come in many shapes/sizes/colors\").\n" +
+                        "    * ❌ DO NOT state the obvious (e.g., \"Modern combs are made of plastic\").\n" +
+                        "    * ❌ DO NOT describe the image provided.\n" +
+                        "\n" +
+                        "2.  **THE \"GOLD STANDARD\" CONTENT (REQUIRED):**\n" +
+                        "    You MUST include at least 2 of the following elements in your paragraph:\n" +
+                        "    * **Specific Origin:** A specific year, ancient civilization, or inventor's name.\n" +
+                        "    * **Weird Science:** A chemical compound, physical phenomenon (e.g., static electricity), or biological effect.\n" +
+                        "    * **Strange Culture/Law:** A weird myth, a taboo, or an illegal act involving the object.\n" +
+                        "\n" +
+                        "3.  **LANGUAGE & FLOW:**\n" +
+                        "    * **Language:** Bahasa Indonesia Only.\n" +
+                        "    * **Flow:** Combine the facts into one engaging story-telling paragraph. Start with the past, end with a surprising fact.\n" +
+                        "\n" +
+                        "EXAMPLES:\n" +
+                        "\n" +
+                        "[Object: Sisir / Comb]\n" +
+                        "BAD (Generic/Boring):\n" +
+                        "\"Sisir digunakan untuk merapikan rambut. Ada sisir untuk rambut lurus dan keriting. Sisir modern terbuat dari plastik agar tahan lama.\"\n" +
+                        "GOOD (Specific/Trivia):\n" +
+                        "\"Sisir adalah salah satu alat tertua dalam sejarah manusia, dengan temuan tertua berusia 5.000 tahun di Persia yang dibuat dari tulang hewan. Jauh dari sekadar alat kecantikan, penemuan sisir kutu di Israel yang memuat kalimat utuh tertua dalam alfabet Kanaan kuno sebenarnya berisi mantra doa agar penggunanya bebas dari kutu. Selain itu, gesekan sisir plastik pada rambut kering adalah contoh paling sederhana untuk menciptakan listrik statis melalui efek triboelektrik.\"\n" +
+                        "\n" +
+                        "[Object: Kacamata / Glasses]\n" +
+                        "BAD (Generic/Boring):\n" +
+                        "\"Kacamata membantu orang melihat lebih jelas. Lensa kacamata bisa dibuat untuk rabun jauh atau dekat.\"\n" +
+                        "GOOD (Specific/Trivia):\n" +
+                        "\"Kacamata pertama kali ditemukan di Italia pada abad ke-13, namun awalnya kacamata tersebut tidak memiliki gagang dan harus dijepitkan di hidung yang sangat tidak nyaman. Uniknya, di masa lalu kacamata sering dianggap sebagai simbol kejahatan atau tipu daya dalam seni lukis Eropa kuno, berbeda dengan sekarang yang diasosiasikan dengan kecerdasan. Secara optik, lensa kacamata bekerja dengan membiaskan cahaya agar jatuh tepat di retina, memperbaiki apa yang disebut 'refractive error' pada mata.\"\n" +
+                        "\n" +
+                        "Analyze the image, identify the object, and generate the JSON with these strict trivia standards.";
 
-        GenerativeModelFutures model = GenerativeModelFutures.from(gm);
+        RequestBody bodyPrompt = RequestBody.create(MediaType.parse("text/plain"), singlePrompt);
 
-        String promptText = "Apa nama satu objek utama yang paling menonjol di gambar ini? Jawab hanya dengan nama bendanya dalam Bahasa Indonesia. Jangan ada kata lain.";
+        // System Prompt
+        String systemInstruction = "Kamu adalah asisten JSON. Outputmu harus JSON valid saja sesuai schema yang diminta. Jangan menyapa, jangan memberi penjelasan lain.";
+        RequestBody bodySystemPrompt = RequestBody.create(MediaType.parse("text/plain"), systemInstruction);
 
-        Content content = new Content.Builder()
-                .addImage(imageBitmap)
-                .addText(promptText)
-                .build();
+        // Messages
+        RequestBody bodyMessages = RequestBody.create(MediaType.parse("text/plain"), "[]");
 
-        ListenableFuture<GenerateContentResponse> response = model.generateContent(content);
-        Executor mainExecutor = ContextCompat.getMainExecutor(this);
-
-        Futures.addCallback(response, new FutureCallback<GenerateContentResponse>() {
-            @Override
-            public void onSuccess(@Nullable GenerateContentResponse result) {
-                if (result != null) {
-                    String detectedObjectName = result.getText().trim();
-                    detectedObjectName = detectedObjectName.replace("```", "").trim();
-
-                    Log.d(TAG, "Gemini Output: " + detectedObjectName);
-
-                    // Lanjut ke TAHAP 2: Kirim nama objek ke Senopati
-                    fetchDetailsFromSenopati(detectedObjectName);
-                } else {
-                    showError("Gemini tidak mengembalikan hasil.");
-                }
-            }
-
-            @Override
-            public void onFailure(@NonNull Throwable t) {
-                Log.e(TAG, "Gemini gagal", t);
-                showError("Gagal mengenali gambar: " + t.getMessage());
-            }
-        }, mainExecutor);
-    }
-
-    // --- TAHAP 2: Senopati API Vercel (Ambil Fakta & Info) ---
-    private void fetchDetailsFromSenopati(String objectName) {
-        runOnUiThread(() -> binding.tvLoadingText.setText("Mencari fakta unik..."));
-
-        // 1. GUNAKAN CLIENT UNSAFE (Bypass SSL Error)
+        // 3. Setup Retrofit
         OkHttpClient client = getUnsafeOkHttpClient();
 
-        // 2. PASANG CLIENT KE RETROFIT
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(BASE_URL_SENOPATI)
-                .client(client) // Menggunakan client yang sudah di-bypass SSL-nya
+                .client(client)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
 
         SenopatiApiService service = retrofit.create(SenopatiApiService.class);
 
-        // --- KONSTRUKSI REQUEST UNTUK API SENOPATI ---
-        JsonObject payload = new JsonObject();
-
-        String systemInstruction = "Kamu adalah ensiklopedia anak pintar. " +
-                "Berikan detail objek dalam format JSON VALID tanpa markdown. " +
-                "Format wajib: {\"inggris\": \"[Nama Inggris]\", \"kategori\": \"[Kategori]\", \"fakta\": \"[Fakta singkat]\"}";
-        payload.addProperty("systemPrompt", systemInstruction);
-        payload.addProperty("prompt", "Jelaskan tentang objek: " + objectName);
-        payload.add("messages", new JsonArray());
-
-        Log.d(TAG, "Mengirim ke Senopati: " + payload.toString());
-
-        service.chat(payload).enqueue(new Callback<JsonObject>() {
+        // 4. Kirim Request
+        Log.d(TAG, "Mengirim request multipart ke Senopati Elysia...");
+        service.chatVision(bodyImage, bodyPrompt, bodySystemPrompt, bodyMessages).enqueue(new Callback<JsonObject>() {
             @Override
             public void onResponse(Call<JsonObject> call, Response<JsonObject> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     try {
-                        String reply = response.body().get("reply").getAsString();
-                        Log.d(TAG, "Senopati Reply: " + reply);
+                        JsonObject body = response.body();
+                        String reply = null;
 
-                        if (reply.contains("```json")) {
-                            reply = reply.split("```json")[1].split("```")[0];
-                        } else if (reply.contains("```")) {
-                            reply = reply.split("```")[1].split("```")[0];
+                        // --- LOGIKA EKSTRAKSI RESPON ---
+                        if (body.has("data") && body.get("data").isJsonObject()) {
+                            JsonObject dataObj = body.getAsJsonObject("data");
+                            if (dataObj.has("reply") && !dataObj.get("reply").isJsonNull()) {
+                                reply = dataObj.get("reply").getAsString();
+                            }
                         }
 
-                        JsonObject jsonResult = JsonParser.parseString(reply.trim()).getAsJsonObject();
+                        if (reply == null) {
+                            if (body.has("content") && !body.get("content").isJsonNull()) {
+                                reply = body.get("content").getAsString();
+                            } else if (body.has("reply") && !body.get("reply").isJsonNull()) {
+                                reply = body.get("reply").getAsString();
+                            } else {
+                                reply = body.toString();
+                            }
+                        }
 
-                        String inggris = jsonResult.has("inggris") ? jsonResult.get("inggris").getAsString() : "Unknown";
-                        String kategori = jsonResult.has("kategori") ? jsonResult.get("kategori").getAsString() : "Umum";
-                        String fakta = jsonResult.has("fakta") ? jsonResult.get("fakta").getAsString() : "Tidak ada fakta.";
+                        Log.d(TAG, "Senopati Vision Raw Output: " + reply);
 
-                        startResultActivity(objectName, inggris, kategori, fakta);
+                        if (reply == null || reply.isEmpty()) {
+                            showError("Respon server kosong.");
+                            return;
+                        }
+
+                        parseAndShowResult(reply);
 
                     } catch (Exception e) {
-                        Log.e(TAG, "Gagal parsing JSON Senopati", e);
-                        startResultActivity(objectName, "Nama Inggris", "Error", "Gagal memproses data.");
+                        Log.e(TAG, "Gagal ekstraksi JSON Response", e);
+                        showError("Gagal membaca struktur data server.");
                     }
                 } else {
-                    Log.e(TAG, "Senopati Error: " + response.code());
-                    showError("Server Senopati sibuk (Error " + response.code() + ")");
+                    Log.e(TAG, "Server Error: " + response.code());
+                    try {
+                        if (response.errorBody() != null) {
+                            Log.e(TAG, "Error Body: " + response.errorBody().string());
+                        }
+                    } catch (Exception e) {}
+                    showError("Gagal: " + response.message());
                 }
             }
 
             @Override
             public void onFailure(Call<JsonObject> call, Throwable t) {
-                Log.e(TAG, "Koneksi Senopati Error Detail: ", t);
-
-                String pesanError;
-
-                // Deteksi jenis error dengan pesan yang lebih spesifik
-                if (t instanceof java.net.SocketTimeoutException) {
-                    pesanError = "Waktu habis! Server terlalu lambat menjawab.";
-                } else if (t instanceof java.security.cert.CertPathValidatorException ||
-                        t instanceof javax.net.ssl.SSLHandshakeException) {
-                    pesanError = "Masalah Keamanan SSL (Harusnya sudah fix).";
-                } else if (t instanceof java.net.UnknownHostException) {
-                    pesanError = "DNS Error: Tidak bisa menemukan server.";
-                } else {
-                    pesanError = "Error: " + t.getMessage();
-                }
-
-                showError(pesanError);
+                Log.e(TAG, "Koneksi Gagal", t);
+                showError("Error Koneksi: " + t.getMessage());
             }
         });
     }
 
-    // --- METHOD TAMBAHAN UNTUK BYPASS SSL (CERTIFICATE ERROR) ---
-    private OkHttpClient getUnsafeOkHttpClient() {
+    private void parseAndShowResult(String jsonString) {
         try {
-            // Buat TrustManager yang mempercayai semua sertifikat
-            final javax.net.ssl.TrustManager[] trustAllCerts = new javax.net.ssl.TrustManager[]{
-                    new javax.net.ssl.X509TrustManager() {
-                        @Override
-                        public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) {
-                        }
+            String cleanJson = jsonString;
 
-                        @Override
-                        public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) {
-                        }
+            if (cleanJson.contains("```json")) {
+                cleanJson = cleanJson.split("```json")[1].split("```")[0];
+            } else if (cleanJson.contains("```")) {
+                cleanJson = cleanJson.split("```")[1].split("```")[0];
+            }
 
-                        @Override
-                        public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                            return new java.security.cert.X509Certificate[]{};
-                        }
-                    }
-            };
+            int firstBrace = cleanJson.indexOf("{");
+            int lastBrace = cleanJson.lastIndexOf("}");
 
-            // Install TrustManager
-            final javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("SSL");
-            sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
+            if (firstBrace != -1 && lastBrace != -1 && firstBrace < lastBrace) {
+                cleanJson = cleanJson.substring(firstBrace, lastBrace + 1);
+                Log.d(TAG, "Final JSON to Parse: " + cleanJson);
 
-            // Buat SocketFactory
-            final javax.net.ssl.SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
+                JsonObject jsonResult = JsonParser.parseString(cleanJson.trim()).getAsJsonObject();
 
-            OkHttpClient.Builder builder = new OkHttpClient.Builder();
-            builder.sslSocketFactory(sslSocketFactory, (javax.net.ssl.X509TrustManager) trustAllCerts[0]);
-            builder.hostnameVerifier((hostname, session) -> true); // Izinkan semua hostname
+                String nama = jsonResult.has("nama_indonesia") ? jsonResult.get("nama_indonesia").getAsString() :
+                        (jsonResult.has("nama") ? jsonResult.get("nama").getAsString() : "Benda Misterius");
 
-            // Tetap pasang Timeout 60 detik agar tidak RTO
-            builder.connectTimeout(60, TimeUnit.SECONDS);
-            builder.readTimeout(60, TimeUnit.SECONDS);
-            builder.writeTimeout(60, TimeUnit.SECONDS);
+                String inggris = jsonResult.has("nama_inggris") ? jsonResult.get("nama_inggris").getAsString() :
+                        (jsonResult.has("inggris") ? jsonResult.get("inggris").getAsString() : "Unknown");
 
-            return builder.build();
+                // Kategori sekarang akan diambil dari JSON jika AI memberikannya
+                String kategori = jsonResult.has("kategori") ? jsonResult.get("kategori").getAsString() : "Umum";
+
+                String fakta = jsonResult.has("fakta_menarik") ? jsonResult.get("fakta_menarik").getAsString() :
+                        (jsonResult.has("fakta") ? jsonResult.get("fakta").getAsString() : "Tidak ada fakta.");
+
+                startResultActivity(nama, inggris, kategori, fakta);
+            } else {
+                Log.w(TAG, "Respon bukan JSON, menggunakan fallback manual: " + cleanJson);
+                String namaObjek = cleanJson.trim().replace("\"", "");
+                if (namaObjek.length() > 50) namaObjek = namaObjek.substring(0, 50);
+                startResultActivity(namaObjek, "Translate Me", "Umum", "AI hanya memberikan nama, tidak ada fakta detail.");
+            }
+
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            Log.e(TAG, "Error Parsing Final", e);
+            startResultActivity("Gagal Proses", "-", "-", "Format data tidak dikenali.");
         }
     }
 
-    private void showError(String message) {
-        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
-        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(this::finish, 3000);
+    // --- PERBAIKAN UTAMA: KOMPRESI GAMBAR ---
+    // Metode ini mengubah ukuran gambar agar tidak terlalu besar (Max 1024px)
+    // dan mengompresnya menjadi JPG agar diterima server Vercel (Limit 4.5MB).
+    private File getCompressedFileFromUri(Uri uri) {
+        try {
+            // 1. Decode dimensi gambar terlebih dahulu (tanpa memuat seluruh gambar ke memori)
+            InputStream input = getContentResolver().openInputStream(uri);
+            BitmapFactory.Options onlyBoundsOptions = new BitmapFactory.Options();
+            onlyBoundsOptions.inJustDecodeBounds = true;
+            BitmapFactory.decodeStream(input, null, onlyBoundsOptions);
+            input.close();
+
+            if ((onlyBoundsOptions.outWidth == -1) || (onlyBoundsOptions.outHeight == -1)) {
+                return null;
+            }
+
+            // 2. Hitung skala reduksi agar gambar tidak lebih besar dari 1024px
+            // Ini sangat penting untuk mengurangi penggunaan memori dan ukuran file
+            int originalSize = (onlyBoundsOptions.outHeight > onlyBoundsOptions.outWidth) ? onlyBoundsOptions.outHeight : onlyBoundsOptions.outWidth;
+            double ratio = (originalSize > 1024) ? (originalSize / 1024.0) : 1.0;
+
+            BitmapFactory.Options bitmapOptions = new BitmapFactory.Options();
+            bitmapOptions.inSampleSize = getPowerOfTwoForSampleRatio(ratio);
+
+            // 3. Decode gambar dengan skala yang sudah dihitung
+            input = getContentResolver().openInputStream(uri);
+            Bitmap bitmap = BitmapFactory.decodeStream(input, null, bitmapOptions);
+            input.close();
+
+            if (bitmap == null) return null;
+
+            // 4. Simpan gambar yang sudah di-resize ke file cache sebagai JPG
+            File tempFile = new File(getCacheDir(), "upload_compressed.jpg");
+            FileOutputStream out = new FileOutputStream(tempFile);
+
+            // Kompresi ke JPEG dengan kualitas 70% (Cukup bagus, ukuran kecil)
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 70, out);
+
+            out.flush();
+            out.close();
+
+            // Bersihkan memori bitmap
+            bitmap.recycle();
+
+            return tempFile;
+        } catch (Exception e) {
+            Log.e(TAG, "Gagal mengompres gambar", e);
+            return null;
+        }
+    }
+
+    // Helper untuk menghitung sample size (harus pangkat 2: 1, 2, 4, 8...)
+    private int getPowerOfTwoForSampleRatio(double ratio) {
+        int k = Integer.highestOneBit((int)Math.floor(ratio));
+        if(k==0) return 1;
+        return k;
     }
 
     private void startResultActivity(String nama, String inggris, String kategori, String fakta) {
@@ -271,5 +323,36 @@ public class LoadingActivityy extends AppCompatActivity {
         intent.putExtra("FAKTA_OBJEK", fakta);
         startActivity(intent);
         finish();
+    }
+
+    private void showError(String message) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+        binding.ivCapturedImage.postDelayed(this::finish, 2000);
+    }
+
+    private OkHttpClient getUnsafeOkHttpClient() {
+        try {
+            final javax.net.ssl.TrustManager[] trustAllCerts = new javax.net.ssl.TrustManager[]{
+                    new javax.net.ssl.X509TrustManager() {
+                        @Override
+                        public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) {}
+                        @Override
+                        public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) {}
+                        @Override
+                        public java.security.cert.X509Certificate[] getAcceptedIssuers() { return new java.security.cert.X509Certificate[]{}; }
+                    }
+            };
+            final javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("SSL");
+            sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
+            final javax.net.ssl.SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
+            OkHttpClient.Builder builder = new OkHttpClient.Builder();
+            builder.sslSocketFactory(sslSocketFactory, (javax.net.ssl.X509TrustManager) trustAllCerts[0]);
+            builder.hostnameVerifier((hostname, session) -> true);
+            builder.connectTimeout(60, TimeUnit.SECONDS);
+            builder.readTimeout(60, TimeUnit.SECONDS);
+            return builder.build();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }

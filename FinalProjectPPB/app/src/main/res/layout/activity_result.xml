@@ -47,7 +47,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:scaleType="centerCrop"
-                android:rotation="90"
+                android:rotation="0"
                 tools:src="@tools:sample/backgrounds/scenic" />
         </com.google.android.material.card.MaterialCardView>
 
@@ -263,6 +263,21 @@
             android:textSize="14sp"
             android:lineSpacingExtra="4dp"
             tools:text="Warna buahnya ada yang merah, hijau, dan kuning. Bentuknya bulat seperti bola. Rasanya ada yang manis dan ada yang sedikit asam." />
+
     </com.google.android.material.card.MaterialCardView>
+
+    <ImageView
+        android:id="@+id/filterOverlay"
+        android:layout_width="125dp"
+        android:layout_height="50dp"
+        android:adjustViewBounds="true"
+        android:scaleType="fitCenter"
+        android:src="@drawable/senopati_allnew"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.985"
+        app:layout_constraintHorizontal_bias="0.5" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

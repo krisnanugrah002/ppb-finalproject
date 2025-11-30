@@ -12,7 +12,7 @@
         android:id="@+id/ivCapturedImage"
         android:layout_width="700dp"
         android:layout_height="900dp"
-        android:rotation="90"
+        android:rotation="0"
         android:scaleType="fitCenter"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
