@@ -87,49 +87,45 @@ public class LoadingActivityy extends AppCompatActivity {
         // --- UPDATE PENTING: PROMPT BARU DENGAN PERSONA CURATOR + FIX KATEGORI ---
         // Saya menambahkan field "kategori" ke dalam JSON Schema agar AI mengisinya.
         String singlePrompt =
-                "You are an expert Curator of Obscure Knowledge. Your task is to identify the object in the image and provide a JSON response containing strictly \"Mind-Blowing\" trivia.\n" +
+                "You are an AI that identifies the main object in the image and responds ONLY in valid JSON.\n" +
                         "\n" +
-                        "JSON Schema:\n" +
+                        "Your tasks:\n" +
+                        "1. Identify the object.\n" +
+                        "2. Provide the English name.\n" +
+                        "3. Provide ONE fun fact for young children (TK–SD).\n" +
+                        "\n" +
+                        "JSON schema:\n" +
                         "{\n" +
                         "  \"nama_indonesia\": \"string\",\n" +
                         "  \"nama_inggris\": \"string\",\n" +
-                        "  \"kategori\": \"string\",\n" + // <--- DITAMBAHKAN AGAR TIDAK HANYA 'UMUM'
+                        "  \"kategori\": \"string\",\n" +
                         "  \"fakta_menarik\": \"string\"\n" +
                         "}\n" +
                         "\n" +
-                        "CRITICAL RULES FOR \"fakta_menarik\" (MUST FOLLOW):\n" +
+                        "STRICT rules for \"fakta_menarik\":\n" +
+                        "• MUST be short (minimal 3 sentence and max 5 sentences).\n" +
+                        "• MUST be simple enough for children.\n" +
+                        "• MUST be a fun, unique, or surprising fact about the object.\n" +
+                        "• MUST NOT AND DO NOT describe what the object is used for.\n" +
+                        "• MUST NOT AND DO NOT describe what the object looks like.\n" +
+                        "• MUST NOT be long or scientific.\n" +
                         "\n" +
-                        "1.  **THE \"ANTI-BORING\" FILTER (STRICTLY FORBIDDEN):**\n" +
-                        "    * ❌ DO NOT explain the object's function (e.g., \"Combs are for tidying hair\").\n" +
-                        "    * ❌ DO NOT mention generic variations (e.g., \"Combs come in many shapes/sizes/colors\").\n" +
-                        "    * ❌ DO NOT state the obvious (e.g., \"Modern combs are made of plastic\").\n" +
-                        "    * ❌ DO NOT describe the image provided.\n" +
+                        "Fun facts may include:\n" +
+                        "• A simple historical origin.\n" +
+                        "• A kid-friendly trivia.\n" +
+                        "• A surprising discovery.\n" +
                         "\n" +
-                        "2.  **THE \"GOLD STANDARD\" CONTENT (REQUIRED):**\n" +
-                        "    You MUST include at least 2 of the following elements in your paragraph:\n" +
-                        "    * **Specific Origin:** A specific year, ancient civilization, or inventor's name.\n" +
-                        "    * **Weird Science:** A chemical compound, physical phenomenon (e.g., static electricity), or biological effect.\n" +
-                        "    * **Strange Culture/Law:** A weird myth, a taboo, or an illegal act involving the object.\n" +
+                        "Examples of GOOD fun facts:\n" +
+                        "• \"Sofa pertama dulu hanya dipakai bangsawan Mesir.\" \n" +
+                        "• \"Pensil dulu dibuat dari timah, bukan grafit seperti sekarang.\" \n" +
                         "\n" +
-                        "3.  **LANGUAGE & FLOW:**\n" +
-                        "    * **Language:** Bahasa Indonesia Only.\n" +
-                        "    * **Flow:** Combine the facts into one engaging story-telling paragraph. Start with the past, end with a surprising fact.\n" +
+                        "Examples of BAD WORSE fun facts:\n" +
+                        "• \"Pintu di rumah anda bisa membantu anda masuk dan keluar rumah.\" \n" +
+                        "• \"Pintu ini bisa dibuka dan ditutup dengan mudah.\" \n" +
                         "\n" +
-                        "EXAMPLES:\n" +
-                        "\n" +
-                        "[Object: Sisir / Comb]\n" +
-                        "BAD (Generic/Boring):\n" +
-                        "\"Sisir digunakan untuk merapikan rambut. Ada sisir untuk rambut lurus dan keriting. Sisir modern terbuat dari plastik agar tahan lama.\"\n" +
-                        "GOOD (Specific/Trivia):\n" +
-                        "\"Sisir adalah salah satu alat tertua dalam sejarah manusia, dengan temuan tertua berusia 5.000 tahun di Persia yang dibuat dari tulang hewan. Jauh dari sekadar alat kecantikan, penemuan sisir kutu di Israel yang memuat kalimat utuh tertua dalam alfabet Kanaan kuno sebenarnya berisi mantra doa agar penggunanya bebas dari kutu. Selain itu, gesekan sisir plastik pada rambut kering adalah contoh paling sederhana untuk menciptakan listrik statis melalui efek triboelektrik.\"\n" +
-                        "\n" +
-                        "[Object: Kacamata / Glasses]\n" +
-                        "BAD (Generic/Boring):\n" +
-                        "\"Kacamata membantu orang melihat lebih jelas. Lensa kacamata bisa dibuat untuk rabun jauh atau dekat.\"\n" +
-                        "GOOD (Specific/Trivia):\n" +
-                        "\"Kacamata pertama kali ditemukan di Italia pada abad ke-13, namun awalnya kacamata tersebut tidak memiliki gagang dan harus dijepitkan di hidung yang sangat tidak nyaman. Uniknya, di masa lalu kacamata sering dianggap sebagai simbol kejahatan atau tipu daya dalam seni lukis Eropa kuno, berbeda dengan sekarang yang diasosiasikan dengan kecerdasan. Secara optik, lensa kacamata bekerja dengan membiaskan cahaya agar jatuh tepat di retina, memperbaiki apa yang disebut 'refractive error' pada mata.\"\n" +
-                        "\n" +
-                        "Analyze the image, identify the object, and generate the JSON with these strict trivia standards.";
+                        "Language: Bahasa Indonesia only.\n" +
+                        "Output: Valid JSON ONLY. No explanation, no markdown.";
+
 
         RequestBody bodyPrompt = RequestBody.create(MediaType.parse("text/plain"), singlePrompt);
 
