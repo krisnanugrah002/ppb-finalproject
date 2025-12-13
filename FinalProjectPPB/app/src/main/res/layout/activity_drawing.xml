@@ -75,14 +75,13 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tvDrawingInstruction">
 
-        <com.example.finalprojectppb.DrawingCanvasView
-            android:id="@+id/drawingCanvas"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+    <com.catchlearn.app.DrawingCanvasView
+        android:id="@+id/drawingCanvas"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Toolbar dengan tombol-tombol -->
     <ScrollView
         android:id="@+id/svToolbar"
         android:layout_width="0dp"

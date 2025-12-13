@@ -14,15 +14,15 @@ plugins {
 }
 
 android {
-    namespace = "com.example.finalprojectppb"
-    compileSdk = 34
+    namespace = "com.catchlearn.app"
+    compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.finalprojectppb"
+        applicationId = "com.catchlearn.app"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
